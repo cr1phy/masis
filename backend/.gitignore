@@ -1,1 +1,5 @@
-/target
+/.env
+/debug/
+/target/
+/**/*.rs.bk
+/*.pdb
