@@ -21,3 +21,7 @@ listenfd = "1.0.1"
 log = "0.4.22"
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
+actix-ws = "0.3.0"
+actix-cors = "0.7.0"
+futures = "0.3.31"
+futures-util = { version = "0.3.31", features = ["tokio-io"] }
