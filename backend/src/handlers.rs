@@ -1,4 +1,8 @@
-use actix_web::{get, post, rt, web::{self, ServiceConfig}, Error, HttpRequest, HttpResponse};
+use actix_web::{
+    get, post, rt,
+    web::{self, ServiceConfig},
+    Error, HttpRequest, HttpResponse,
+};
 use actix_ws::AggregatedMessage;
 use serde_json::json;
 
@@ -48,6 +52,15 @@ async fn user_events(req: HttpRequest, stream: web::Payload) -> Result<HttpRespo
     Ok(res)
 }
 
+#[get("/acc/{token}/settings")]
+async fn get_account_settings() -> HttpResponse {
+    HttpResponse::Ok().finish()
+}
+
 pub fn init(cfg: &mut ServiceConfig) {
-    cfg.service(status);
+    cfg.service(status)
+        .service(login)
+        .service(logout)
+        .service(user_events)
+        .service(get_account_settings);
 }

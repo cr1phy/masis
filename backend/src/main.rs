@@ -1,4 +1,5 @@
 mod handlers;
+mod types;
 use std::{env, io};
 
 use actix_web::{middleware, web::Data, App, HttpServer};

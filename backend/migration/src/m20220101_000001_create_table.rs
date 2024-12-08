@@ -9,14 +9,14 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(User::Table)
+                    .table(Account::Table)
                     .if_not_exists()
-                    .col(pk_uuid(User::Id))
-                    .col(string_len_uniq(User::Username, 128))
-                    .col(string_uniq(User::Email))
-                    .col(string(User::Password))
-                    .col(timestamp(User::DateOfRegistration))
-                    .col(timestamp(User::TimeOfLastOnline))
+                    .col(pk_uuid(Account::Id))
+                    .col(string_len_uniq(Account::Username, 128))
+                    .col(string_uniq(Account::Email))
+                    .col(string(Account::Password))
+                    .col(timestamp(Account::DateOfRegistration))
+                    .col(timestamp(Account::TimeOfLastOnline))
                     .to_owned(),
             )
             .await
@@ -24,13 +24,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(User::Table).to_owned())
+            .drop_table(Table::drop().table(Account::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum User {
+enum Account {
     Table,
     Id,
     Username,

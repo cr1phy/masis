@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = [".", "migration"]
+members = [".", "entity", "migration"]
 
 [dependencies]
 actix-web = { version = "4.9.0", features = ["macros"] }
@@ -25,3 +25,6 @@ actix-ws = "0.3.0"
 actix-cors = "0.7.0"
 futures = "0.3.31"
 futures-util = { version = "0.3.31", features = ["tokio-io"] }
+uuid = { version = "1.11.0", features = ["v7"] }
+chrono = "0.4.38"
+bcrypt = "0.16.0"
