@@ -1,5 +1,7 @@
 mod handlers;
+mod error;
 mod types;
+mod service;
 use std::{env, io};
 
 use actix_web::{middleware, web::Data, App, HttpServer};
@@ -8,7 +10,7 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DbConn};
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     conn: DbConn,
 }
 

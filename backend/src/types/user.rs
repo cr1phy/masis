@@ -1,6 +1,6 @@
+use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use bcrypt::{hash, verify, DEFAULT_COST};
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -24,7 +24,7 @@ impl Account {
             time_of_last_online: None,
         }
     }
-    
+
     pub fn verify_password(&self, password: &str) -> bool {
         verify(password, &self.password_hash).unwrap_or(false)
     }

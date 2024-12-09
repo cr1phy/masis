@@ -17,6 +17,7 @@ sea-orm = { version = "1.1.2", features = [
 tracing-subscriber = "0.3.19"
 dotenvy = "0.15.7"
 migration = { path = "migration" }
+entity = { path = "entity" }
 listenfd = "1.0.1"
 log = "0.4.22"
 serde = { version = "1.0.215", features = ["derive"] }
@@ -28,3 +29,6 @@ futures-util = { version = "0.3.31", features = ["tokio-io"] }
 uuid = { version = "1.11.0", features = ["v7"] }
 chrono = "0.4.38"
 bcrypt = "0.16.0"
+thiserror = "2.0.6"
+derive_more = { version = "1.0.0", features = ["display"] }
+jwt-simple = "0.12.10"
