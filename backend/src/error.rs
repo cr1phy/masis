@@ -50,7 +50,11 @@ pub struct ApiError {
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ApiError {{ code: {}, message: {} }}", self.code, self.message)
+        write!(
+            f,
+            "ApiError {{ code: {}, message: {} }}",
+            self.code, self.message
+        )
     }
 }
 
@@ -65,8 +69,6 @@ impl ApiError {
 
 impl ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
-        HttpResponse::build(StatusCode::from_u16(self.code).unwrap())
-            .json(self)
+        HttpResponse::build(StatusCode::from_u16(self.code).unwrap()).json(self)
     }
 }
-

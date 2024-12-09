@@ -1,12 +1,11 @@
-use actix_web::{http::StatusCode, HttpResponse};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::Utc;
 use jwt_simple::prelude::*;
-use sea_orm::{prelude::*, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{prelude::*, Set};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use ::entity::{account, prelude::*}; // Предполагается, что `entity` - это модуль с ORM-сущностями.
+use ::entity::{account, prelude::*};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AccountRegistrationForm {
@@ -21,7 +20,6 @@ pub struct AccountLoginForm {
     pub password: String,
 }
 
-// Функция для обработки логина
 pub async fn handle_login(
     db: &DatabaseConnection,
     form: &AccountLoginForm,
@@ -43,13 +41,12 @@ pub async fn handle_login(
     }
 }
 
-// Функция для обработки регистрации
 pub async fn handle_registration(
     db: &DatabaseConnection,
     form: &AccountRegistrationForm,
 ) -> Result<(), &'static str> {
-    let password_hash = hash(&form.password, DEFAULT_COST)
-        .map_err(|_| "Failed to hash password")?;
+    let password_hash =
+        hash(&form.password, DEFAULT_COST).map_err(|_| "Failed to hash password")?;
 
     let new_user = account::ActiveModel {
         id: Set(Uuid::now_v7()),
@@ -67,11 +64,8 @@ pub async fn handle_registration(
         .map_err(|_| "Failed to insert user")
 }
 
-// Функция для генерации JWT
 fn generate_jwt(user_id: &Uuid) -> String {
     let key = HS256Key::generate();
-    let claims = Claims::create(Duration::from_hours(24))
-        .with_subject(user_id.to_string());
+    let claims = Claims::create(Duration::from_hours(24)).with_subject(user_id.to_string());
     key.authenticate(claims).expect("Failed to generate token")
 }
-

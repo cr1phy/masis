@@ -1,18 +1,15 @@
-mod handlers;
 mod error;
-mod types;
+mod handlers;
 mod service;
-use std::{env, io};
+mod state;
+mod types;
 
 use actix_web::{middleware, web::Data, App, HttpServer};
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{Database, DbConn};
-
-#[derive(Clone)]
-pub struct AppState {
-    conn: DbConn,
-}
+use sea_orm::Database;
+use state::AppState;
+use std::{env, io, time::SystemTime};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -27,7 +24,10 @@ async fn main() -> io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    let state = AppState { conn };
+    let state = AppState {
+        conn,
+        start_time: SystemTime::now(),
+    };
 
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {

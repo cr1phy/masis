@@ -32,3 +32,4 @@ bcrypt = "0.16.0"
 thiserror = "2.0.6"
 derive_more = { version = "1.0.0", features = ["display"] }
 jwt-simple = "0.12.10"
+sys-info = "0.9.1"
