@@ -7,7 +7,7 @@ pub struct Account {
     pub id: Uuid,
     pub username: String,
     pub email: String,
-    pub password_hash: String,
+    pub password: String,
     pub date_of_registration: DateTime<Utc>,
     pub time_of_last_online: Option<DateTime<Utc>>,
 }
@@ -19,14 +19,14 @@ impl Account {
             id: Uuid::now_v7(),
             username: username.to_string(),
             email: email.to_string(),
-            password_hash,
+            password: password_hash,
             date_of_registration: Utc::now(),
             time_of_last_online: None,
         }
     }
 
     pub fn verify_password(&self, password: &str) -> bool {
-        verify(password, &self.password_hash).unwrap_or(false)
+        verify(password, &self.password).unwrap_or(false)
     }
 
     pub fn update_last_online(&mut self) {
