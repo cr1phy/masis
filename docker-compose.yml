@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  backend:
+    build: 
+      context: backend
+      dockerfile: ./backend/Dockerfile
+
+  web:
+    build:
+      context: web
+      dockerfile: ./web/Dockerfile.bun
