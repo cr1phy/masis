@@ -1,12 +1,13 @@
 mod error;
 mod handlers;
-mod service;
 mod state;
 mod types;
 
-use actix_web::{middleware, web::Data, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::{http, middleware, web::Data, App, HttpServer};
 use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sea_orm::Database;
 use state::AppState;
 use std::{env, io, time::SystemTime};
@@ -29,17 +30,34 @@ async fn main() -> io::Result<()> {
         start_time: SystemTime::now(),
     };
 
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder
+        .set_private_key_file("key.pem", SslFiletype::PEM)
+        .unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
+
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
+        let cors = Cors::default()
+              .allowed_origin("https://www.masis.ru")
+              .allowed_origin_fn(|origin, _req_head| {
+                  origin.as_bytes().ends_with(b".masis.ru")
+              })
+              .allowed_methods(vec!["GET", "POST"])
+              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+              .allowed_header(http::header::CONTENT_TYPE)
+              .max_age(3600);
+
         App::new()
             .wrap(middleware::Logger::default())
+            .wrap(cors)
             .app_data(Data::new(state.clone()))
             .configure(handlers::init)
     });
 
     server = match listenfd.take_tcp_listener(0)? {
         Some(listener) => server.listen(listener)?,
-        None => server.bind_auto_h2c(&server_url)?,
+        None => server.bind_openssl(&server_url, builder)?,
     };
 
     log::info!("Starting server at {server_url}");

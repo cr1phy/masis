@@ -18,6 +18,18 @@ pub enum ApiErrorKind {
 
     #[error("Forbidden")]
     Forbidden,
+
+    #[error("Email already in use")]
+    EmailAlreadyInUse,
+
+    #[error("Username already in use")]
+    UsernameAlreadyInUse,
+
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+
+    #[error("Session expired or invalid")]
+    InvalidSession,
 }
 
 impl ApiErrorKind {
@@ -28,6 +40,10 @@ impl ApiErrorKind {
             ApiErrorKind::NotFound => StatusCode::NOT_FOUND,
             ApiErrorKind::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
             ApiErrorKind::Forbidden => StatusCode::FORBIDDEN,
+            ApiErrorKind::EmailAlreadyInUse => StatusCode::CONFLICT,
+            ApiErrorKind::UsernameAlreadyInUse => StatusCode::CONFLICT,
+            ApiErrorKind::InvalidCredentials => StatusCode::UNAUTHORIZED,
+            ApiErrorKind::InvalidSession => StatusCode::UNAUTHORIZED,
         }
     }
 
@@ -38,6 +54,10 @@ impl ApiErrorKind {
             ApiErrorKind::NotFound => "Resource not found",
             ApiErrorKind::InternalServerError => "Internal server error",
             ApiErrorKind::Forbidden => "Forbidden access",
+            ApiErrorKind::EmailAlreadyInUse => "Email is already in use",
+            ApiErrorKind::UsernameAlreadyInUse => "Username is already in use",
+            ApiErrorKind::InvalidCredentials => "Invalid email or password",
+            ApiErrorKind::InvalidSession => "Session expired or invalid",
         }
     }
 }
