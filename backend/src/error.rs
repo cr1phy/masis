@@ -4,20 +4,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Serialize)]
 pub enum ApiErrorKind {
-    #[error("Unauthorized access")]
-    Unauthorized,
-
-    #[error("Invalid request")]
-    BadRequest,
-
-    #[error("Not Found")]
-    NotFound,
-
     #[error("Internal Server Error")]
     InternalServerError,
-
-    #[error("Forbidden")]
-    Forbidden,
 
     #[error("Email already in use")]
     EmailAlreadyInUse,
@@ -35,11 +23,7 @@ pub enum ApiErrorKind {
 impl ApiErrorKind {
     pub fn to_status_code(&self) -> StatusCode {
         match self {
-            ApiErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
-            ApiErrorKind::BadRequest => StatusCode::BAD_REQUEST,
-            ApiErrorKind::NotFound => StatusCode::NOT_FOUND,
             ApiErrorKind::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
-            ApiErrorKind::Forbidden => StatusCode::FORBIDDEN,
             ApiErrorKind::EmailAlreadyInUse => StatusCode::CONFLICT,
             ApiErrorKind::UsernameAlreadyInUse => StatusCode::CONFLICT,
             ApiErrorKind::InvalidCredentials => StatusCode::UNAUTHORIZED,
@@ -49,11 +33,7 @@ impl ApiErrorKind {
 
     pub fn message(&self) -> &str {
         match self {
-            ApiErrorKind::Unauthorized => "Unauthorized access",
-            ApiErrorKind::BadRequest => "Invalid request",
-            ApiErrorKind::NotFound => "Resource not found",
             ApiErrorKind::InternalServerError => "Internal server error",
-            ApiErrorKind::Forbidden => "Forbidden access",
             ApiErrorKind::EmailAlreadyInUse => "Email is already in use",
             ApiErrorKind::UsernameAlreadyInUse => "Username is already in use",
             ApiErrorKind::InvalidCredentials => "Invalid email or password",

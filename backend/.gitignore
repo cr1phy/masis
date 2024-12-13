@@ -1,5 +1,7 @@
 /.env
-/debug/
+/debug/ 
 /target/
 /**/*.rs.bk
 /*.pdb
+/cert.pem
+/key.pem
