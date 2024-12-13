@@ -39,17 +39,16 @@ async fn main() -> io::Result<()> {
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(move || {
         let cors = Cors::default()
-              .allowed_origin("https://www.masis.ru")
-              .allowed_origin_fn(|origin, _req_head| {
-                  origin.as_bytes().ends_with(b".masis.ru")
-              })
-              .allowed_methods(vec!["GET", "POST"])
-              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
-              .allowed_header(http::header::CONTENT_TYPE)
-              .max_age(3600);
+            .allowed_origin("https://www.masis.ru")
+            .allowed_origin_fn(|origin, _req_head| origin.as_bytes().ends_with(b".masis.ru"))
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+            .allowed_header(http::header::CONTENT_TYPE)
+            .max_age(3600);
 
         App::new()
             .wrap(middleware::Logger::default())
+            .wrap(middleware::NormalizePath::trim())
             .wrap(cors)
             .app_data(Data::new(state.clone()))
             .configure(handlers::init)

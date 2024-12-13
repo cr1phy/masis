@@ -1,4 +1,3 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 

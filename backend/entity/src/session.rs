@@ -4,18 +4,17 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "account")]
+#[sea_orm(table_name = "session")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     #[sea_orm(unique)]
-    pub username: String,
-    #[sea_orm(unique)]
-    pub email: String,
-    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
-    pub password: Vec<u8>,
-    pub date_of_registration: DateTime,
-    pub time_of_last_online: DateTime,
+    pub account_id: Uuid,
+    pub device_name: String,
+    pub ip: String,
+    pub created_at: DateTime,
+    pub expires_at: DateTime,
+    pub token: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
