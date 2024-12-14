@@ -12,7 +12,7 @@ use migration::{Migrator, MigratorTrait};
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use sea_orm::Database;
 use state::AppState;
-use std::{env, io, time::SystemTime};
+use std::{env, io};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -20,6 +20,7 @@ async fn main() -> io::Result<()> {
 
     dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
     let server_url = format!("{host}:{port}");
@@ -27,10 +28,7 @@ async fn main() -> io::Result<()> {
     let conn = Database::connect(&db_url).await.unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    let state = AppState {
-        conn,
-        start_time: SystemTime::now(),
-    };
+    let state = AppState { conn, jwt_secret };
 
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
