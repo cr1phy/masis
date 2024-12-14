@@ -1,5 +1,6 @@
 use crate::{
     error::{ApiError, ApiErrorKind},
+    service::session::create_session,
     state::AppState,
 };
 use ::entity::prelude::Account;
@@ -67,11 +68,21 @@ async fn registration(
         time_of_last_online: Set(Utc::now().naive_utc()),
     };
 
-    Account::insert(new_account)
+    let account_id = Account::insert(new_account)
         .exec(db)
         .await
-        .map(|user| HttpResponse::Created().json(user.last_insert_id))
-        .map_err(|_| ApiError::new(ApiErrorKind::InternalServerError))
+        .map(|acc| acc.last_insert_id)
+        .map_err(|_| ApiError::new(ApiErrorKind::InternalServerError))?;
+
+    create_session(
+        account_id,
+        "Web Browser".to_string(),
+        "127.0.0.1".to_string(),
+        "cr1perfwefw",
+        db,
+    )
+    .await
+    .map(|token| HttpResponse::Ok().json(json!({"status": "Ok!", "token": token})))
 }
 
 #[post("/v1/auth/login")]

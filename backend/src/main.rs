@@ -1,7 +1,9 @@
 mod error;
 mod handlers;
+mod service;
 mod state;
 mod types;
+mod utils;
 
 use actix_cors::Cors;
 use actix_web::{http, middleware, web::Data, App, HttpServer};
