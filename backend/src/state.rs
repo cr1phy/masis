@@ -1,3 +1,4 @@
+use hashbrown::HashMap;
 use lettre::SmtpTransport;
 use sea_orm::DbConn;
 
@@ -5,7 +6,7 @@ use sea_orm::DbConn;
 pub struct AppState {
     pub conn: DbConn,
     pub jwt_secret: String,
-    pub 2fa_codes: HashMap<String, String>,
+    pub oauth_codes: HashMap<String, String>,
     pub smtp_transport: SmtpTransport,
     pub smtp_from_email: String,
 }

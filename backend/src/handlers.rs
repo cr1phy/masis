@@ -14,6 +14,7 @@ use chrono::Utc;
 use entity::account;
 use lettre::{Message, Transport};
 use log::{error, info};
+use rand::Rng as _;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -144,8 +145,8 @@ async fn login(
         })?;
 
     // Проверка пароля
-    let password_valid = verify(&form.password, &String::from_utf8_lossy(&user.password))
-        .map_err(|e| {
+    let password_valid =
+        verify(&form.password, &String::from_utf8_lossy(&user.password)).map_err(|e| {
             log::error!("Ошибка при верификации пароля: {:?}", e);
             ApiError::new(ApiErrorKind::InternalServerError)
         })?;
@@ -157,7 +158,7 @@ async fn login(
 
     // Если 2FA код указан
     if let Some(provided_code) = &form.two_factor_code {
-        let stored_code = state.conn.get_temp_2fa_code(user.id).await?;
+        let stored_code = state.oauth_codes.get_temp_2fa_code(user.id).await?;
         if provided_code != stored_code {
             log::info!("Неверный 2FA код для email: {}", form.email);
             return Err(ApiError::new(ApiErrorKind::InvalidSession)); // Код неверный
@@ -176,12 +177,17 @@ async fn login(
         .take(6)
         .map(char::from)
         .collect();
-    state.conn.set_temp_2fa_code(user.id, &two_factor_code).await?;
+    state
+        .conn
+        .set_temp_2fa_code(user.id, &two_factor_code)
+        .await?;
 
-    send_2fa_email(&state, &user.email, &two_factor_code).await.map_err(|e| {
-        log::error!("Ошибка при отправке email с 2FA: {:?}", e);
-        ApiError::new(ApiErrorKind::InternalServerError)
-    })?;
+    send_2fa_email(&state, &user.email, &two_factor_code)
+        .await
+        .map_err(|e| {
+            log::error!("Ошибка при отправке email с 2FA: {:?}", e);
+            ApiError::new(ApiErrorKind::InternalServerError)
+        })?;
 
     Ok(HttpResponse::Accepted().json(serde_json::json!({
         "status": "2FA code sent to email"
@@ -198,7 +204,10 @@ async fn send_2fa_email(
         .from(state.smtp_from_email.parse()?)
         .to(email.parse()?)
         .subject("Ваш код для входа")
-        .body(format!("Ваш код для двухфакторной аутентификации: {}", code))?;
+        .body(format!(
+            "Ваш код для двухфакторной аутентификации: {}",
+            code
+        ))?;
 
     state.smtp_transport.send(&email).map_err(|e| {
         log::error!("Ошибка отправки письма: {:?}", e);
@@ -215,13 +224,60 @@ async fn generate_token_and_session(
     req: HttpRequest,
 ) -> Result<String, ApiError> {
     let device_info = extract_device_info(&req);
-    let ip = req.peer_addr().map(|addr| addr.ip().to_string()).unwrap_or_default();
+    let ip = req
+        .peer_addr()
+        .map(|addr| addr.ip().to_string())
+        .unwrap_or_default();
     create_session(user_id, device_info, ip, &state.jwt_secret, &state.conn).await
 }
 
 #[post("/v1/auth/logout")]
-async fn logout() -> HttpResponse {
-    HttpResponse::Ok().finish()
+async fn logout(
+    req: HttpRequest,
+    state: Data<AppState>,
+    session_token: Json<String>, // Токен сессии от клиента
+) -> Result<HttpResponse, ApiError> {
+    let db = &state.conn;
+
+    // Извлекаем токен сессии
+    let token = session_token.into_inner();
+
+    // Находим сессию по токену
+    let session = Session::find()
+        .filter(session::Column::Token.eq(token.clone()))
+        .one(db)
+        .await
+        .map_err(|e| {
+            log::error!("Ошибка при запросе к базе данных: {:?}", e);
+            ApiError::new(ApiErrorKind::InternalServerError)
+        })?;
+
+    // Если сессии нет, возвращаем ошибку
+    let session = session.ok_or_else(|| {
+        log::info!("Попытка выхода с недействительным токеном: {}", token);
+        ApiError::new(ApiErrorKind::InvalidSession)
+    })?;
+
+    // Конвертируем найденную запись в ActiveModel и удаляем её
+    let mut active_session: session::ActiveModel = session.into();
+    active_session.delete(db).await.map_err(|e| {
+        log::error!("Ошибка при удалении сессии из базы данных: {:?}", e);
+        ApiError::new(ApiErrorKind::InternalServerError)
+    })?;
+
+    // Логируем выход пользователя
+    log::info!(
+        "Пользователь ID: {:?} успешно завершил сессию с устройством: {:?}",
+        active_session.account_id,
+        active_session
+            .device_name
+            .unwrap_or_else(|| "Unknown Device".into())
+    );
+
+    // Возвращаем успешный ответ
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "Logged out successfully"
+    })))
 }
 
 pub fn init(cfg: &mut ServiceConfig) {
