@@ -34,4 +34,6 @@ thiserror = "2.0.7"
 derive_more = { version = "1.0.0", features = ["display"] }
 jsonwebtoken = "9.3.0"
 woothee = { version = "0.13.0", features = ["serde"] }
+lettre = "0.11.11"
+hashbrown = { version = "0.15.2", features = ["serde"] }
 

@@ -9,9 +9,10 @@ use actix_web::{
     web::{Data, Json, ServiceConfig},
     HttpRequest, HttpResponse,
 };
-use bcrypt::{hash, DEFAULT_COST};
+use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::Utc;
 use entity::account;
+use lettre::{Message, Transport};
 use log::{error, info};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
@@ -109,6 +110,7 @@ async fn registration(
 pub struct LoginForm {
     pub email: String,
     pub password: String,
+    pub two_factor_code: Option<String>, // Опциональный код 2FA
 }
 
 #[derive(Debug, Serialize)]
@@ -133,54 +135,88 @@ async fn login(
         .one(db)
         .await
         .map_err(|e| {
-            error!("Ошибка при проверке email: {:?}", e);
+            log::error!("Ошибка базы данных при поиске пользователя: {:?}", e);
             ApiError::new(ApiErrorKind::InternalServerError)
         })?
         .ok_or_else(|| {
-            info!("Неверный email при попытке входа: {}", form.email);
+            log::info!("Неверный email при попытке входа: {}", form.email);
             ApiError::new(ApiErrorKind::InvalidCredentials)
         })?;
 
-    // Сравнение пароля
-    let password_valid = bcrypt::verify(&form.password, &String::from_utf8_lossy(&user.password))
+    // Проверка пароля
+    let password_valid = verify(&form.password, &String::from_utf8_lossy(&user.password))
         .map_err(|e| {
-        error!("Ошибка при верификации пароля: {:?}", e);
-        ApiError::new(ApiErrorKind::InternalServerError)
-    })?;
+            log::error!("Ошибка при верификации пароля: {:?}", e);
+            ApiError::new(ApiErrorKind::InternalServerError)
+        })?;
 
     if !password_valid {
-        info!("Неверный пароль для email: {}", form.email);
+        log::info!("Неверный пароль для email: {}", form.email);
         return Err(ApiError::new(ApiErrorKind::InvalidCredentials));
     }
 
-    // Извлекаем информацию о пользователе
-    let user_agent = req
-        .headers()
-        .get("User-Agent")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
+    // Если 2FA код указан
+    if let Some(provided_code) = &form.two_factor_code {
+        let stored_code = state.conn.get_temp_2fa_code(user.id).await?;
+        if provided_code != stored_code {
+            log::info!("Неверный 2FA код для email: {}", form.email);
+            return Err(ApiError::new(ApiErrorKind::InvalidSession)); // Код неверный
+        }
+        state.conn.clear_temp_2fa_code(user.id).await?;
+        log::info!("Успешная аутентификация с 2FA для email: {}", form.email);
 
-    // Парсим User-Agent с помощью woothee
-    let device_info = Parser::new().parse(user_agent).unwrap_or_default();
+        // Продолжим, создадим токен и вернем ответ
+        let token = generate_token_and_session(user.id, &state, req).await?;
+        return Ok(HttpResponse::Ok().json(serde_json::json!({ "token": token })));
+    }
 
-    // Логируем результат
-    info!(
-        "Успешный вход для email: {}, устройство: {:?}, IP: {}",
-        form.email,
-        &device_info,
-        req.peer_addr()
-            .map(|addr| addr.ip().to_string())
-            .unwrap_or_default()
-    );
+    // Генерация и отправка 2FA кода
+    let two_factor_code: String = rand::thread_rng()
+        .sample_iter(rand::distributions::Alphanumeric)
+        .take(6)
+        .map(char::from)
+        .collect();
+    state.conn.set_temp_2fa_code(user.id, &two_factor_code).await?;
 
-    // Возвращаем ответ с информацией
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "status": "Ok!",
-        "device": device_info.vendor,
-        "os_name": device_info.os,
-        "os_version": device_info.os_version,
-        "os_family": device_info.category,
+    send_2fa_email(&state, &user.email, &two_factor_code).await.map_err(|e| {
+        log::error!("Ошибка при отправке email с 2FA: {:?}", e);
+        ApiError::new(ApiErrorKind::InternalServerError)
+    })?;
+
+    Ok(HttpResponse::Accepted().json(serde_json::json!({
+        "status": "2FA code sent to email"
     })))
+}
+
+// Отправка email с кодом 2FA
+async fn send_2fa_email(
+    state: &Data<AppState>,
+    email: &str,
+    code: &str,
+) -> Result<(), lettre::address::AddressError> {
+    let email = Message::builder()
+        .from(state.smtp_from_email.parse()?)
+        .to(email.parse()?)
+        .subject("Ваш код для входа")
+        .body(format!("Ваш код для двухфакторной аутентификации: {}", code))?;
+
+    state.smtp_transport.send(&email).map_err(|e| {
+        log::error!("Ошибка отправки письма: {:?}", e);
+        e
+    })?;
+
+    Ok(())
+}
+
+// Функция для генерации токена и сессии
+async fn generate_token_and_session(
+    user_id: Uuid,
+    state: &Data<AppState>,
+    req: HttpRequest,
+) -> Result<String, ApiError> {
+    let device_info = extract_device_info(&req);
+    let ip = req.peer_addr().map(|addr| addr.ip().to_string()).unwrap_or_default();
+    create_session(user_id, device_info, ip, &state.jwt_secret, &state.conn).await
 }
 
 #[post("/v1/auth/logout")]
